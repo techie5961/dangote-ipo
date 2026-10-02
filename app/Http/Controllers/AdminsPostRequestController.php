@@ -536,4 +536,107 @@ class AdminsPostRequestController extends Controller
             'status' => 'success'
         ]);
     }
+    // manual deposit bank
+    public function ManualDepositBankSettings(){
+         $message='Bank settings updated success';
+        $key='bank_settings';
+        $value=[
+        'account_number' => request('account_number'),
+        'account_name' => request('account_name'),
+        'bank_name' => request('bank_name')
+        ];
+       if(DB::table('settings')->where('key',$key)->exists()){
+     DB::table('settings')->where('key',$key)->update([
+             'value' => json_encode($value),
+            'updated' => Carbon::now()
+        ]);
+       }else{
+         DB::table('settings')->insert([
+            'key' => $key,
+            'value' => json_encode($value),
+            'status' => 'active',
+            'updated' => Carbon::now(),
+            'date' => Carbon::now()
+        ]);
+       }
+        
+
+        return response()->json([
+            'message' => $message,
+            'status' => 'success'
+        ]);
+    }
+
+     // manual deposit crypto
+    public function CryptoSettings(){
+         $message='Crypto settings updated success';
+        $key='crypto_settings';
+        $value=[
+        'address' => request('address'),
+        'network' => request('network')
+        ];
+       if(DB::table('settings')->where('key',$key)->exists()){
+     DB::table('settings')->where('key',$key)->update([
+             'value' => json_encode($value),
+            'updated' => Carbon::now()
+        ]);
+       }else{
+         DB::table('settings')->insert([
+            'key' => $key,
+            'value' => json_encode($value),
+            'status' => 'active',
+            'updated' => Carbon::now(),
+            'date' => Carbon::now()
+        ]);
+       }
+        
+
+        return response()->json([
+            'message' => $message,
+            'status' => 'success'
+        ]);
+    }
+
+    // change withdrawal gateway
+    public function ChangeWithdrawalGateway(){
+        $gateways=json_decode(file_get_contents(database_path('data/gateways.json')));
+        $gateways->withdrawal=request('gateway');
+        file_put_contents(database_path('data/gateways.json'),json_encode($gateways));
+        return response()->json([
+            'message' => 'Withdrawal gateway updated successfully',
+            'status' => 'success'
+        ]);
+    }
+
+    // change deposit gateway
+    public function ChangeDepositGateway(){
+          $gateways=json_decode(file_get_contents(database_path('data/gateways.json')));
+        $gateways->deposit->{request('gateway')}=request('status');
+        file_put_contents(database_path('data/gateways.json'),json_encode($gateways));
+        return response()->json([
+            'message' => 'Deposit gateway updated successfully',
+            'status' => 'success'
+        ]);
+    }
+
+    // reset user password
+    public function ResetUserPassword(){
+        $validator=Validator::make(request()->all(),[
+            'user_id' => 'required|numeric|exists:users,id'
+        ]);
+        if($validator->fails()){
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'status' => 'error'
+            ]);
+        }
+
+        DB::table('users')->where('id',Auth::guard('users')->user()->id)->update([
+            'password' => Hash::make('123456')
+        ]);
+        return response()->json([
+            'message' => 'User pasword reset successfully',
+            'status' => 'success'
+        ]);
+    }
 }

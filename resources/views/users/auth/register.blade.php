@@ -24,7 +24,7 @@
         })" class="w-full max-w-500 column g-10">
       <div class="column g-10 w-full">
          <div class="w-full column align-center g-5px">
-            <img src="{{ asset(config('settings.logo')) }}" alt="" class="no-select no-pointer h-40px">
+            <img x-data="{  }" x-on:click="window.location.href='{{ url('/') }}'" src="{{ asset(config('settings.logo')) }}" alt="" class="no-select h-40px">
             <strong class="font-weight-800 font-size-1-5rem">Register</strong>
         </div>
            {{-- csrf token --}}

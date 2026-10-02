@@ -90,30 +90,30 @@ class UsersPostRequestController extends Controller
     return $user_id;
 
     });
-    $response=Http::timeout(30)->withToken(env('ASPFIY_SECRET_KEY'))->post('https://api-v1.aspfiy.com/reserve-paga/',[
-                'email' => trim(request('email')),
-                'reference' => GenerateID(),
-                'firstName' => trim(request('first_name')),
-                'lastName' => trim(request('last_name')),
-                'webhookUrl' => secure_url('aspfiy/paga/verify/webhook/process'),
-                'phone' => '09013350351'
-            ]);
-            if($response->successful()){
-                $data=$response->json();
-               $account_number=$data['data']['account']['account_number'];
-               $account_name=$data['data']['account']['account_name'];
-               $bank_name=$data['data']['account']['bank_name'];
-                DB::transaction(function() use($account_name,$account_number,$bank_name,$trx){
-                    DB::table('users')->where('id',$trx)->update([
-                        'paga_account' => json_encode([
-                            'account_number' => $account_number,
-                            'account_name' => $account_name,
-                            'bank_name' => $bank_name
-                        ]),
-                        'updated' => Carbon::now() 
-                    ]);
-                });
-            }
+    // $response=Http::timeout(30)->withToken(env('ASPFIY_SECRET_KEY'))->post('https://api-v1.aspfiy.com/reserve-paga/',[
+    //             'email' => trim(request('email')),
+    //             'reference' => GenerateID(),
+    //             'firstName' => trim(request('first_name')),
+    //             'lastName' => trim(request('last_name')),
+    //             'webhookUrl' => secure_url('aspfiy/paga/verify/webhook/process'),
+    //             'phone' => '09013350351'
+    //         ]);
+    //         if($response->successful()){
+    //             $data=$response->json();
+    //            $account_number=$data['data']['account']['account_number'];
+    //            $account_name=$data['data']['account']['account_name'];
+    //            $bank_name=$data['data']['account']['bank_name'];
+    //             DB::transaction(function() use($account_name,$account_number,$bank_name,$trx){
+    //                 DB::table('users')->where('id',$trx)->update([
+    //                     'paga_account' => json_encode([
+    //                         'account_number' => $account_number,
+    //                         'account_name' => $account_name,
+    //                         'bank_name' => $bank_name
+    //                     ]),
+    //                     'updated' => Carbon::now() 
+    //                 ]);
+    //             });
+    //         }
     return response()->json([
         'message' => 'Registration success',
         'status' => 'success'
@@ -1228,7 +1228,323 @@ public function NekpayDepositInitiate(){
     }
    
 }
+// deposit initaite
+public function DepositInitiate(){
+    $validator=Validator::make(request()->all(),[
+        'amount' => 'required|numeric|min:'.DB::table('packages')->where('status','active')->orderBy('cost','asc')->first()->cost.''
+    ],[
+        'amount.min' => 'Minimum deposit is '.CurrencyHelper::format(DB::table('packages')->where('status','active')->orderBy('cost','asc')->first()->cost,'NGN',Auth::guard('users')->user()->display_currency).''
+    ]);
+    if($validator->fails()){
+        return response()->json([
+            'message' => $validator->errors()->first(),
+            'status' => 'error'
+        ]);
+    }
 
+    // nekpay
+    if(request('channel') == 'nekpay'){
+$orderNo=GenerateID();
+    
+    // Generate signature function inside
+    $generateSignature = function($params) {
+        unset($params['sign']);
+        unset($params['sign_type']);
+        
+        ksort($params);
+        
+        $signStr = '';
+        foreach ($params as $key => $value) {
+            if ($value !== '' && $value !== null) {
+                $signStr .= $key . '=' . $value . '&';
+            }
+        }
+        $signStr = rtrim($signStr, '&');
+        $signStr .= '&key=' . env('NEKPAYMENT_SECRET_KEY');
+        
+        return md5($signStr);
+    };
+    
+    $params = [
+        'version' => '1.0',
+        'mch_id' => env('NEKPAYMENT_MERCHANT_ID'),
+        'pay_type' => '523',
+        'bank_code' => 'NGR044',
+        'sign_type' => 'MD5',
+        'mch_order_no' => $orderNo,
+        'trade_amount' => number_format(request('amount'), 2, '.', ''),
+        'order_date' => Carbon::now()->format('Y-m-d H:i:s'),
+        'goods_name' => 'Wallet Funding',
+        'notify_url' => url('nekpay/payment/webhook'),
+        'page_url' => url('users/transactions'),
+        'mch_return_msg' => 'order_' . time()
+    ];
+    
+    // Generate signature using the function
+    $params['sign'] = $generateSignature($params);
+    
+    // Send to API
+    $response = Http::asForm()->post('https://api.nekpayment.com/pay/web', $params);
+    $data = json_decode(json_encode($response->json()));
+    if($data->respCode == 'SUCCESS'){
+ DB::table('transactions')->insert([
+                    'uniqid' => GenerateID(),
+                    'user_id' => Auth::guard('users')->user()->id,
+                    'title' => 'Recharge via Nekpay',
+                    'class' => 'credit',
+                    'type' => 'deposit',
+                    'amount' => request('amount'),
+                    'fee' => 0,
+                    'icon' => '',
+                    'wallet' => json_encode([
+                        'from' => [
+                        'method' => 'automatic',
+                        
+                    ],
+                    'to' => 'deposit_balance',
+
+
+                    ]),
+                    'data' => json_encode([
+                       'Gateway' => 'NekPay',
+                       'Order Number' => $data->orderNo
+
+                    ]),
+                    'json' => json_encode([
+                    'balance' => [
+                    'before' => 0,
+                    'after' => 0
+                    ],
+                    'primary_wallet' => 'Deposit Wallet',
+                    'api_response' => $data
+
+                    ]),
+                    
+                    'status' => 'initiated',
+                    'updated' => Carbon::now(),
+                    'date' => Carbon::now()
+                    ]);
+    return response()->json([
+        'message' => 'Deposit request initiated successfully, redirecting...',
+        'status' => 'success',
+        'url' => $data->payInfo
+    ]);
+    }else{
+        return response()->json([
+            'message' => 'Unable to initiate deposit, please try again',
+            'status' => 'error'
+        ]);
+    }
+   
+    }
+
+    // watchpay
+    if(request('channel') == 'watchpay'){
+          return response()->json([
+            'message' => 'Unable to initiate deposit, please try again',
+            'status' => 'error'
+        ]);
+    }
+
+    // kkpay
+   if (request('channel') == 'kkpay') {
+
+    $reference = strtolower(GenerateID());
+
+    $params = [
+        'merchantId'    => env('KKPAY_MERCHANT_ID'),
+        'reference'     => $reference,
+        'amount'        => number_format(request('amount'),2,'.',''),
+        'customerName'  => config('app.name'),
+        'customerEmail' => env('MAIL_FROM_ADDRESS'),
+        'customerPhone' => Auth::guard('users')->user()->phone,
+        'currency'      => 'NGN',
+        'payMethod'     => '15002',
+        'eventType'     => 'payin.order.create',
+        'notifyUrl'     => url('kkpay/deposit/webhook/confirm'),
+        'redirectUrl'   => url('users/transactions'),
+    ];
+
+    $params = array_filter($params, fn ($value) => $value !== null);
+    ksort($params, SORT_STRING);
+    $queryString = '';
+    foreach ($params as $key => $value) {
+        $queryString .= $key . '=' . $value . '&';
+    }
+    $queryString = rtrim($queryString, '&');
+    $signString = $queryString . env('KKPAY_SECRET_KEY');
+    $signature = strtolower(md5($signString));
+    $params['sign'] = $signature;
+
+    $response = Http::asJson()->post(
+        'https://kaka126.com/api/v1/payment/',
+        $params
+    );
+
+    if ($response->successful()) {
+        $data=json_decode(json_encode($response->json()));
+        // return $data;
+          if($data->statusCode == 'success'){
+ DB::table('transactions')->insert([
+                    'uniqid' => GenerateID(),
+                    'user_id' => Auth::guard('users')->user()->id,
+                    'title' => 'Recharge via KKPay',
+                    'class' => 'credit',
+                    'type' => 'deposit',
+                    'amount' => request('amount'),
+                    'fee' => 0,
+                    'icon' => '',
+                    'wallet' => json_encode([
+                        'from' => [
+                        'method' => 'automatic',
+                        
+                    ],
+                    'to' => 'deposit_balance',
+
+
+                    ]),
+                    'data' => json_encode([
+                       'Gateway' => 'KKPay',
+                       'Transaction ID' => $data->transactionId
+
+                    ]),
+                    'json' => json_encode([
+                    'balance' => [
+                    'before' => 0,
+                    'after' => 0
+                    ],
+                    'primary_wallet' => 'Deposit Wallet',
+                    'api_response' => $data
+
+                    ]),
+                    
+                    'status' => 'initiated',
+                    'updated' => Carbon::now(),
+                    'date' => Carbon::now()
+                    ]);
+    return response()->json([
+        'message' => 'Deposit request initiated successfully, redirecting...',
+        'status' => 'success',
+        'url' => $data->payUrl
+    ]);
+    }else{
+         return response()->json([
+            'message' => 'Unable to initiate deposit, please try again or contact support',
+            'status' => 'error'
+        ]);
+    }
+    }
+
+ return response()->json([
+            'message' => 'Unable to initiate deposit, please try again or contact support',
+            'status' => 'error'
+        ]);
+}
+
+ // manual
+    if(request('channel') == 'manual'){
+        if((request('gateway') ?? 'naira') == 'crypto'){
+           $crypto_settings = json_decode(DB::table('settings')->where('key','crypto_settings')->first()->value ?? '{}');
+
+ $id=DB::table('transactions')->insertGetId([
+                    'uniqid' => GenerateID(),
+                    'user_id' => Auth::guard('users')->user()->id,
+                    'title' => 'Deposit via USDT',
+                    'class' => 'credit',
+                    'type' => 'deposit',
+                    'amount' => request('amount'),
+                    'fee' => 0,
+                    'icon' => '',
+                    'wallet' => json_encode([
+                        'from' => [
+                        'method' => 'manual',
+                        
+                    ],
+                    'to' => 'deposit_balance',
+
+
+                    ]),
+                    'data' => json_encode([
+                       'Gateway' => 'Crypto/USDT',
+                       'Wallet Address' => $crypto_settings->address,
+                       'Network' => $crypto_settings->network,
+                       
+
+                    ]),
+                    'json' => json_encode([
+                    'balance' => [
+                    'before' => 0,
+                    'after' => 0
+                    ],
+                    'primary_wallet' => 'Deposit Wallet'
+
+                    ]),
+                    
+                    'status' => 'initiated',
+                    'updated' => Carbon::now(),
+                    'date' => Carbon::now()
+                    ]);
+    return response()->json([
+        'message' => 'Deposit request initiated successfully, redirecting...',
+        'status' => 'success',
+        'url' => url('users/crypto/checkout?id='.$id.'')
+    ]);
+        }else{
+           $bank_settings = json_decode(DB::table('settings')->where('key','bank_settings')->first()->value ?? '{}');
+             $id=DB::table('transactions')->insertGetId([
+                    'uniqid' => GenerateID(),
+                    'user_id' => Auth::guard('users')->user()->id,
+                    'title' => 'Deposit via Bank Transfer',
+                    'class' => 'credit',
+                    'type' => 'deposit',
+                    'amount' => request('amount'),
+                    'fee' => 0,
+                    'icon' => '',
+                    'wallet' => json_encode([
+                        'from' => [
+                        'method' => 'manual',
+                        
+                    ],
+                    'to' => 'deposit_balance',
+
+
+                    ]),
+                    'data' => json_encode([
+                       'Gateway' => 'Bank',
+                       'Account Number' => $bank_settings->account_number,
+                       'Account Name' => $bank_settings->account_name,
+                       'Bank' => $bank_settings->bank_name
+
+                    ]),
+                    'json' => json_encode([
+                    'balance' => [
+                    'before' => 0,
+                    'after' => 0
+                    ],
+                    'primary_wallet' => 'Deposit Wallet'
+
+                    ]),
+                    
+                    'status' => 'initiated',
+                    'updated' => Carbon::now(),
+                    'date' => Carbon::now()
+                    ]);
+    return response()->json([
+        'message' => 'Deposit request initiated successfully, redirecting...',
+        'status' => 'success',
+        'url' => url('users/deposit/checkout?id='.$id.'')
+    ]);
+        }
+        
+    }
+
+    // fallback
+    return response()->json([
+        'message' => 'No channel available, please contact customer support',
+        'status' => 'info'
+    ]);
+    
+}
 // manual deposit initiate
 public function ManualDepositinitiate(){
      $validator=Validator::make(request()->all(),[
@@ -1293,7 +1609,7 @@ public function ManualCheckout(){
     $validator=Validator::make(request()->all(),[
         'id' => 'required|regex:/^[0-9]+$/|exists:transactions,id',
         'full_name' => 'required|string',
-        'bank_name' => 'required|string'
+        'receipt' => 'required|image|mimes:jpg,jpeg,png,webp|max:5120'
     ]);
     if($validator->fails()){
         return response()->json([
@@ -1301,19 +1617,22 @@ public function ManualCheckout(){
             'status' => 'error'
         ]);
     }
+    $receipt=time().'.'.request()->file('receipt')->getClientOriginalExtension();
+    request()->file('receipt')->move(public_path('receipts'),$receipt);
+    $receipt='<a target="_blank" href="'.asset('receipts/'.$receipt.'').'" class="u c-primary no-select pointer">View Screenshot</a>';
 
     DB::table('transactions')->where('id',request('id'))->update([
         'status' => 'pending',
         'data' => json_encode([
             'Gateway' => 'Manual',
             'Sender Name' => request('full_name'),
-            'Sender Bank' => request('bank_name'),
+            'Screenshot' => $receipt,
 
       ]),
     ]);
 
     return response()->json([
-        'message' => 'Recharge Submitted successfully',
+        'message' => 'Deposit Submitted successfully',
         'status' => 'success'
     ]);
     

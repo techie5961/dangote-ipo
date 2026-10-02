@@ -202,6 +202,21 @@ Route::middleware([UsersDashboardMiddleware::class])->group(function(){
     Route::post('users/post/deposi/checkout/process',[
         UsersPostRequestController::class,'ManualCheckout'
     ]);
+    // deposit
+    Route::post('users/post/deposit/initiate/process',[
+        UsersPostRequestController::class,'DepositInitiate'
+    ]);
+    Route::post('users/post/manual/deposit/initiate/process',[
+        UsersPostRequestController::class,'ManualDepositInitiate'
+    ]);
+      // manual checkout
+    Route::post('users/post/deposit/checkout/process',[
+        UsersPostRequestController::class,'ManualCheckout'
+    ]);
+    // kkpay verify deposit webhook
+    Route::post('kkpay/deposit/webhook/confirm',[
+        UsersPostRequestController::class,'KKPayVerifyDepositWebhook'
+    ]);
 
 });
 // users post(not authenticated)
@@ -380,7 +395,14 @@ Route::get('admins/post/reset/user/pasword',[
 Route::get('admins/user/lock/withdrawal',[
     AdminsDashboardController::class,'LockWithdrawal'
 ]);
-
+// manual deposit settings
+Route::get('admins/manual/deposit/settings',[
+    AdminsDashboardController::class,'ManualDepositSettings'
+]);
+// manual deposit bank settings
+Route::post('admins/post/manual/deposit/bank/settings/process',[
+    AdminsPostRequestController::class,'ManualDepositBankSettings'
+]);
 
 // ADMINS POST REQUEST(authenticated)
 // credit user

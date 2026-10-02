@@ -19,7 +19,7 @@
   <script>
   
   </script>
-    <title>{{ config('app.name') }} > Users > @yield('title') </title>
+    <title>{{ config('app.name') }} • Users • @yield('title') </title>
     <style>
       main{
         padding:0;

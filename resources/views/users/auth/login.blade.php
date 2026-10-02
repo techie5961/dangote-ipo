@@ -18,7 +18,7 @@
         <form action="{{ url('users/post/login/process') }}" method="POST" onsubmit="PostRequest(event,this,LoggedIn)" class="w-full max-w-500 column g-10">
       <div class="w-full column g-10">
         <div class="w-full column align-center g-5px">
-            <img src="{{ asset(config('settings.logo')) }}" alt="" class="no-select no-pointer h-40px">
+<img x-data="{  }" x-on:click="window.location.href='{{ url('/') }}'" src="{{ asset(config('settings.logo')) }}" alt="" class="no-select h-40px">
             <span class="c-primary">Welcome Back</span>
             <strong class="font-weight-800 font-size-1-5rem">Secure Login</strong>
         </div>

@@ -15,7 +15,7 @@
 ])
 {{-- yield css --}}
      @yield('css')
-    <title>{{ config('app.name') }} > Users > @yield('title') </title>
+    <title>{{ config('app.name') }} • Users • @yield('title') </title>
     <style>
         body{
             background:var(--bg)
@@ -62,8 +62,12 @@
     ])
     <header class="w-full pos-relative h-150px">
         <img src="{{ asset('photos/IMG_2013.jpeg') }}" alt="" class="w-full max-h-full z-index-100 no-pointer no-select pos-absolute inset-0">
-    <div class="pos-absolute column primary-text justify-center align-center text-align-center g-10px z-index-200 inset-0 bg-primary-09">
-       
+    <div class="pos-absolute p-20px row primary-text space-between align-center text-align-center g-10px z-index-200 inset-0 bg-primary-09">
+        <img src="{{ asset('photos/IMG_2022.png') }}" alt="" class="h-50px no-select no-pointer">
+       <button x-data="{  }" x-on:click="window.location.href='{{ url('/') }}'" class="no-select w-fit br-5px p-x-20px border-none h-40px row align-center justify-center g-5px bg-secondary secondary-text">
+   HOME
+   
+</button>
     </div>
 
     </div>

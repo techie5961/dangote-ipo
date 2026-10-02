@@ -31,7 +31,7 @@
         document.body.style.paddingBottom=document.querySelector('footer').offsetHeight + 'px';
     })
   </script>
-    <title>{{ config('app.name') }} > Users > @yield('title') </title>
+    <title>{{ config('app.name') }} • Users • @yield('title') </title>
     <style>
         main{
             background:var(--bg);

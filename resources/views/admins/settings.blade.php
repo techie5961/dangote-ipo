@@ -41,7 +41,7 @@
                 </div>
                 <input type="hidden" name="withdrawal_portal" value="{{ $general_settings->withdrawal->portal ?? 'off' }}" class="inp input">
             </div>
-
+            
               {{-- new input --}}
             <div class="column g-5 w-full">
                <div class="column g-2">
@@ -114,7 +114,7 @@
                 <span>Save Changes</span>
             </button>
         </form>
-
+    
         {{-- GENERAL SETTINGS --}}
         <form method="POST" onsubmit="PostRequest(event,this)" action="{{ url('admins/post/general/settings/process') }}" class="w-full active column general-settings-form settings-form g-10 bg-light br-primary p-20">
            

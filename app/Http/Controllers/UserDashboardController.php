@@ -137,7 +137,10 @@ class UserDashboardController extends Controller
 
     // recharge
     public function Recharge(){
-        return view('users.recharge.aspfiy',[
+        $gateways=collect((array) json_decode(file_get_contents(database_path('data/gateways.json')))->deposit)
+    ->filter(fn ($status) => $status === 'active');
+        return view('users.recharge.general',[
+            'gateways' => $gateways,
             'packages' => DB::table('packages')->where('status','active')->orderBy('cost','asc')->limit(9)->get()
         ]);
     }
@@ -173,7 +176,7 @@ class UserDashboardController extends Controller
         ]);
     }
 
-    // manual deposit checkout
+     // manual deposit checkout
     public function ManualDepositCheckout(){
         $validator=Validator::make(request()->all(),[
             'id' => 'required|regex:/^[0-9]+$/|exists:transactions,id,status,initiated'
@@ -183,7 +186,8 @@ class UserDashboardController extends Controller
         }
         return view('users.recharge.checkout',[
             'id' => request('id'),
-            'trx' => DB::table('transactions')->where('id',request('id'))->first()
+            'trx' => DB::table('transactions')->where('id',request('id'))->first(),
+            'bank_settings' => json_decode(DB::table('settings')->where('key','bank_settings')->first()->value ?? '{}'),
         ]);
     }
 

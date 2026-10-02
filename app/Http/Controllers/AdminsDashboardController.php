@@ -376,4 +376,14 @@ class AdminsDashboardController extends Controller
         ]);
         return redirect()->back()->with('success',DB::table('users')->where('id',request('user_id'))->first()->withdrawal == 'locked' ? 'Withdrawal locked successfully' : 'Success');
      }
+       
+       // deposit settings
+    public function ManualDepositSettings(){
+        return view('admins.settings.deposit',[
+            'ip' => Http::get('https://api.ipify.org')->body(),
+            'gateways' => json_decode(file_get_contents(database_path('data/gateways.json'))),
+            'bank_settings' => json_decode(DB::table('settings')->where('key','bank_settings')->first()->value ?? '{}'),
+            'crypto_settings' => json_decode(DB::table('settings')->where('key','crypto_settings')->first()->value ?? '{}'),
+        ]);
+    }
 }

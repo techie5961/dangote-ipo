@@ -20,7 +20,7 @@
 {{-- yield css --}}
      @yield('css')
 
-    <title>{{ config('app.name') }} || Admins || @yield('title') </title>
+    <title>{{ config('app.name') }} • Admins • @yield('title') </title>
 
     <style>
         
@@ -333,6 +333,17 @@
                         <a href="{{ url('admins/users?type=promoter') }}">Promoters/Influencers</a>
                     </div>
                 </div>
+                  {{-- new nav a --}}
+                <a href="{{ url('admins/manual/deposit/settings') }}" class="row nav-a no-u space-between c-primary align-center g-10">
+                    <span>
+<svg viewBox="0 0 24 24" fill="CurrentColor" xmlns="http://www.w3.org/2000/svg" height="20" width="20"><path d="M2 20H22V22H2V20ZM4 12H6V19H4V12ZM9 12H11V19H9V12ZM13 12H15V19H13V12ZM18 12H20V19H18V12ZM2 7L12 2L22 7V11H2V7ZM12 8C12.5523 8 13 7.55228 13 7C13 6.44772 12.5523 6 12 6C11.4477 6 11 6.44772 11 7C11 7.55228 11.4477 8 12 8Z"></path></svg>
+                    </span>
+                    <span class="m-right-auto">Gateway settings</span>
+                    <span>
+                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="CurrentColor" height="15" width="15"><path d="M184.49,136.49l-80,80a12,12,0,0,1-17-17L159,128,87.51,56.49a12,12,0,1,1,17-17l80,80A12,12,0,0,1,184.49,136.49Z"></path></svg>
+
+                    </span>
+                </a>
                   {{-- new nav expandible --}}
                 <div onclick="if(this.classList.contains('active')){
                 this.classList.remove('active');
